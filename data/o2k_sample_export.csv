@@ -1,0 +1,35 @@
+"time [min]","event name","chamber","plot name","value","unit"
+0.00,"Start","Chamber 1","O2 concentration",200.0,"µM"
+0.00,"Start","Chamber 1","O2 flux",10.0,"pmol·s⁻¹·mg⁻¹"
+0.00,"Start","Chamber 2","O2 concentration",199.8,"µM"
+0.00,"Start","Chamber 2","O2 flux",9.8,"pmol·s⁻¹·mg⁻¹"
+
+2.00,"Add pyruvate/malate","Chamber 1","O2 concentration",195.0,"µM"
+2.00,"Add pyruvate/malate","Chamber 1","O2 flux",18.0,"pmol·s⁻¹·mg⁻¹"
+2.00,"Add pyruvate/malate","Chamber 2","O2 concentration",195.2,"µM"
+2.00,"Add pyruvate/malate","Chamber 2","O2 flux",17.5,"pmol·s⁻¹·mg⁻¹"
+
+5.00,"Add ADP","Chamber 1","O2 concentration",180.0,"µM"
+5.00,"Add ADP","Chamber 1","O2 flux",45.0,"pmol·s⁻¹·mg⁻¹"
+5.00,"Add ADP","Chamber 2","O2 concentration",181.0,"µM"
+5.00,"Add ADP","Chamber 2","O2 flux",44.5,"pmol·s⁻¹·mg⁻¹"
+
+9.00,"Add oligomycin","Chamber 1","O2 concentration",172.0,"µM"
+9.00,"Add oligomycin","Chamber 1","O2 flux",20.0,"pmol·s⁻¹·mg⁻¹"
+9.00,"Add oligomycin","Chamber 2","O2 concentration",173.0,"µM"
+9.00,"Add oligomycin","Chamber 2","O2 flux",19.8,"pmol·s⁻¹·mg⁻¹"
+
+13.00,"Add FCCP","Chamber 1","O2 concentration",155.0,"µM"
+13.00,"Add FCCP","Chamber 1","O2 flux",60.0,"pmol·s⁻¹·mg⁻¹"
+13.00,"Add FCCP","Chamber 2","O2 concentration",156.0,"µM"
+13.00,"Add FCCP","Chamber 2","O2 flux",59.5,"pmol·s⁻¹·mg⁻¹"
+
+17.00,"Add rotenone","Chamber 1","O2 concentration",150.0,"µM"
+17.00,"Add rotenone","Chamber 1","O2 flux",8.0,"pmol·s⁻¹·mg⁻¹"
+17.00,"Add rotenone","Chamber 2","O2 concentration",150.5,"µM"
+17.00,"Add rotenone","Chamber 2","O2 flux",7.8,"pmol·s⁻¹·mg⁻¹"
+
+20.00,"End","Chamber 1","O2 concentration",148.0,"µM"
+20.00,"End","Chamber 1","O2 flux",7.5,"pmol·s⁻¹·mg⁻¹"
+20.00,"End","Chamber 2","O2 concentration",148.5,"µM"
+20.00,"End","Chamber 2","O2 flux",7.2,"pmol·s⁻¹·mg⁻¹"
