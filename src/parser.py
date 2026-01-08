@@ -126,6 +126,7 @@ def summarize_replicates(df):
     """
     Summarize respiration states across replicates.
     Returns a dict with mean and std for each state and chamber.
+    Multiple experiments in the same chamber
     """
     states = {
         "LEAK": "Add oligomycin",
