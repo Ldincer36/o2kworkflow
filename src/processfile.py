@@ -15,20 +15,28 @@ import numpy as np
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = BASE_DIR / "data"
-PLOTS_DIR = BASE_DIR / "plots"
-RESULTS_DIR = BASE_DIR / "results"
+
 
 ROW_IDX_POSITION = 7
 
-PLOTS_DIR.mkdir(exist_ok=True)
-RESULTS_DIR.mkdir(exist_ok=True)
 
 
 def process_file(csv_path: Path):
     print(f"\nProcessing: {csv_path.name}")
-
+    sample_dir = csv_path.parent
+    plots_dir = sample_dir / "plots"
+    results_dir = sample_dir/ "results"
+    plots_dir.mkdir(exist_ok=True)
+    results_dir.mkdir(exist_ok=True)
+    print(f"Plots → {plots_dir}")
+    print(f"Results → {results_dir}")
     try:
         df = pd.read_csv(csv_path, sep="\t", skiprows=1)
+        col7 = df.iloc[:, 7]
+        col7_name = df.columns[7]
+
+        col8 = df.iloc[:, 8]
+        col8_name = df.columns[8]
         df = df.iloc[:, 9:-1]
         df.columns = df.columns.str.strip()
         df = df.iloc[:-1]
@@ -39,7 +47,7 @@ def process_file(csv_path: Path):
             baseline_col = anti_candidates[0]
             print(f"Using anti-myosin column: {baseline_col}")
         else:
-            baseline_col = df.columns[-1]
+            baseline_col = df.columns[0]
             print("No anti-myosin column found; using last column as baseline.")
 
         if ROW_IDX_POSITION >= len(df):
@@ -60,48 +68,73 @@ def process_file(csv_path: Path):
         new_row.name = "baseline_subtracted"
 
         df.loc[new_row.name] = new_row
+        df.insert(0, col8_name, col8.iloc[:len(df)].values)
+        df.insert(0, col7_name, col7.iloc[:len(df)].values)
+        df.iloc[-1, 0] = "Baseline Adjusted O2 slope neg"
 
+       
+        
         # -----------------
         # Save new CSV file
         # -----------------
-        output_csv = RESULTS_DIR / f"{csv_path.stem}_BASELINE.csv"
+        
+        output_csv = results_dir / f"{csv_path.stem}_BASELINE.csv"
         df.to_csv(output_csv, index=False)
         print(f"Saved CSV: {output_csv}")
 
         # -----------------
         # Plot
         # -----------------
+        plt.style.use("seaborn-v0_8-whitegrid")
+
         plt.figure(figsize=(10, 6))
 
         x_labels = new_row.index.astype(str)
         x_positions = np.arange(len(x_labels))
 
+        line_color = "#1f77b4"
+        baseline_color = "#d62728"
+
+        # Main line
         plt.plot(
             x_positions,
             new_row.values,
             marker='o',
-            linewidth=2,
+            markersize=6,
+            linewidth=2.5,
             label="O2K Flux (baseline subtracted)",
-            color="blue"
+            color=line_color
         )
 
+        # Baseline
         plt.axhline(
             y=0,
-            color="red",
+            color=baseline_color,
             linestyle="--",
-            linewidth=2,
-            label="Baseline (0 after subtraction)"
-        )
+            linewidth=1.8,
+            label="Baseline"
+)
 
+        # Labels & title
         plt.xticks(x_positions, x_labels, rotation=45, ha='right')
-        plt.ylabel("O2K Flux")
-        plt.title(f"O2K Flux - {csv_path.stem}")
+        plt.ylabel("O2K Flux", weight="bold")
+        plt.title(f"O2K Flux – {csv_path.stem}", weight="bold")
 
-        plt.legend()
-        plt.grid(True, linestyle="--", alpha=0.4)
+        # Remove top/right spines (ggplot-style)
+        ax = plt.gca()
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+
+        # Light grid only on y-axis
+        plt.grid(True, axis='y', linestyle="--", alpha=0.3)
+        plt.grid(False, axis='x')
+
+        # Legend
+        plt.legend(frameon=False)
+
         plt.tight_layout()
 
-        output_plot = PLOTS_DIR / f"{csv_path.stem}_plot.png"
+        output_plot = plots_dir / f"{csv_path.stem}_plot.png"
         plt.savefig(output_plot, dpi=300)
         plt.close()
 
@@ -111,12 +144,18 @@ def process_file(csv_path: Path):
         print(f"Failed {csv_path.name}: {e}")
 
 
+
 def main():
     if not DATA_DIR.exists():
         print("Data directory not found.")
         return
 
-    csv_files = sorted(DATA_DIR.glob("*.csv"))
+    csv_files = [
+    f for f in DATA_DIR.rglob("*.csv")
+    if "results" not in f.parts
+    and "plots" not in f.parts
+    and "_BASELINE" not in f.name
+]
 
     if not csv_files:
         print("No CSV files found in data/")
@@ -126,6 +165,7 @@ def main():
         process_file(file)
 
     print("\nAll files processed successfully.")
+
 
 
 if __name__ == "__main__":
