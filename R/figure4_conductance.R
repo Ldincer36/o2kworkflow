@@ -1,45 +1,7 @@
 # R/figure4_conductance.R
 #
 # Recreates the "respiratory conductance" panel of Wimberly et al. 2025
-# (J Appl Physiol), Fig. 4A's third column: for each sample, JO2 is
-# measured across a creatine-kinase (CK) clamp PCr titration, converted
-# to an energy demand (dG_ATP) at each step, and the slope of JO2 vs.
-# dG_ATP ("conductance") is computed per sample and plotted.
-#
-# Input: raw O2k "ANALYZED.csv" exports (continuous trace + event marks
-# PCR1, PCR2, ... at each PCr addition), NOT the summarized
-# "mark_statistics" files handled by process_file.R.
-#
-# --- PCr protocol / dG_ATP source ---------------------------------------
-# The default titration is cumulative PCr = 1, 3, 6, 9, 12 mM (matching
-# the lab's "Mito Protocols" spreadsheet, "JO2 - CK clamp" sheet,
-# Pyruvate + Malate protocol). dG_ATP at each step is computed with
-# gatp() (R/gatp.R), NOT taken from the spreadsheet's own tabulated
-# dG_ATP column.
-#
-# NOTE: gatp()'s computed values diverge from that spreadsheet's stated
-# dG_ATP beyond the first step -- both agree exactly at 1 mM PCr
-# (-54.16 kJ/mol), but gatp() gives -59.96 kJ/mol at 12 mM vs. the
-# spreadsheet's -62.47 kJ/mol. This isn't a bug in gatp() (it's a
-# faithful, verified port of gatp.py, and gives the same answer whether
-# you jump straight to a concentration or reach it via several
-# increments); the spreadsheet's numbers just come from a different,
-# unverified method. Per instruction, this script trusts gatp()'s
-# calculation over the spreadsheet for BOTH the default and any custom
-# ("x...") PCr sequence.
-#
-# --- Filename conventions ------------------------------------------------
-# - Chamber protein content (mg, for normalizing JO2 to pmol/s/mg) is
-#   read from "..._A_<mg>_B_<mg>..." in the filename.
-# - A file gets the DEFAULT PCr sequence above UNLESS its name starts
-#   with "x", in which case a custom cumulative-PCr sequence (mM) is
-#   read from a dash-separated list at the end of the filename, e.g.
-#   "xMyRun-1-3-6-9-12.ANALYZED.csv" -> c(1, 3, 6, 9, 12). Either way,
-#   dG_ATP is computed from that sequence with gatp().
 
-# Requires R/gatp.R to already be sourced (run_analysis.R does this for
-# you) -- this script uses gatp() but doesn't source it itself, matching
-# the rest of this project's scripts.
 library(dplyr)
 library(ggplot2)
 library(stringr)
@@ -48,8 +10,7 @@ DEFAULT_PCR_MM     <- c(1, 3, 6, 9, 12)
 DEFAULT_DG_ATP_KJ  <- gatp(diff(c(0, DEFAULT_PCR_MM))) / 1000
 
 #' Read a raw O2k "ANALYZED.csv" export, stripping the UTF-8 BOM some
-#' DatLab exports include on the header line (which otherwise corrupts
-#' the first column name).
+
 read_o2k_trace <- function(path) {
   raw <- readLines(path, encoding = "UTF-8", warn = FALSE)
   raw[1] <- sub("^\xef\xbb\xbf", "", raw[1], useBytes = TRUE)
@@ -70,10 +31,7 @@ parse_chamber_protein_mg <- function(filename) {
 }
 
 #' Determine the cumulative PCr sequence (mM) and dG_ATP (kJ/mol) at each
-#' step for a titration file: the default protocol, unless the filename
-#' starts with "x", in which case a dash-separated sequence at the end of
-#' the filename (before the extension) is used and dG_ATP is computed
-#' with gatp() -- see the caveat in this file's header comment.
+
 get_pcr_sequence <- function(filename) {
   base <- basename(filename)
   base_noext <- sub("\\.[Aa][Nn][Aa][Ll][Yy][Zz][Ee][Dd]\\.[Cc][Ss][Vv]$", "", base)
@@ -105,11 +63,6 @@ get_pcr_sequence <- function(filename) {
 }
 
 #' Split a raw trace into titration-step windows using PCR-numbered event
-#' marks (PCR1, PCR2, ...) as boundaries, and take the mean JO2 (chamber
-#' A and B) over the last `tail_seconds` of each window as that step's
-#' steady-state flux. Non-titration marks (CYTOC, CK+PCR+ATP, LOn/LOff)
-#' are ignored for windowing. The final window ends at the first
-#' substrate-switch mark found (SUCC/ROT/ANTIA) or the end of the file.
 extract_titration_flux <- function(df, tail_seconds = 45) {
   time_col  <- 1L  # Time [min]
   event_col <- 2L  # Event Name
@@ -156,8 +109,7 @@ extract_titration_flux <- function(df, tail_seconds = 45) {
 }
 
 #' Process one raw titration file end-to-end: read, window, normalize by
-#' chamber protein content, and attach dG_ATP for each step. Returns a
-#' long data frame with one row per sample x chamber x step.
+
 process_titration_file <- function(path, tail_seconds = 45) {
   df <- read_o2k_trace(path)
   seq_info <- get_pcr_sequence(path)
@@ -188,8 +140,7 @@ process_titration_file <- function(path, tail_seconds = 45) {
   ) %>% mutate(JO2_pmol_s_mg = JO2_raw_pmol_s_mL / protein_mg)
 }
 
-#' Process every "*.ANALYZED.csv" titration file in a directory and
-#' combine into one long data frame.
+#' Process every "*.ANALYZED.csv" titration file in a directory 
 process_titration_dir <- function(dir, tail_seconds = 45) {
   files <- list.files(dir, pattern = "\\.[Aa][Nn][Aa][Ll][Yy][Zz][Ee][Dd]\\.[Cc][Ss][Vv]$",
                        full.names = TRUE)
@@ -199,8 +150,7 @@ process_titration_dir <- function(dir, tail_seconds = 45) {
   bind_rows(lapply(files, process_titration_file, tail_seconds = tail_seconds))
 }
 
-#' Fit JO2 ~ dG_ATP per sample x chamber and return the slope
-#' ("conductance") and intercept for each.
+#' Fit JO2 ~ dG_ATP per sample x chamber and return the slope ("conductance") and intercept for each.
 compute_conductance <- function(long_data) {
   long_data %>%
     group_by(sample, chamber) %>%
@@ -213,7 +163,7 @@ compute_conductance <- function(long_data) {
 }
 
 #' Plot JO2 vs. dG_ATP (mean +/- SD across chamber replicates at each
-#' step), styled like Fig. 4A's line plot.
+
 plot_jo2_vs_demand <- function(long_data, title = "Pyruvate/Malate") {
   summary_df <- long_data %>%
     group_by(dG_ATP_kJ_mol) %>%
@@ -229,8 +179,7 @@ plot_jo2_vs_demand <- function(long_data, title = "Pyruvate/Malate") {
 }
 
 #' Plot per-sample conductance as a dot plot, styled like Fig. 4A's
-#' third-column "Conductance" panel (one dot per sample/chamber, mean +/-
-#' SD bar).
+
 plot_conductance <- function(conductance_df) {
   stats <- conductance_df %>%
     summarise(mean_c = mean(conductance), sd_c = sd(conductance))
@@ -250,14 +199,11 @@ plot_conductance <- function(conductance_df) {
 #' End-to-end run: process every raw titration file in `dir`, save the
 #' JO2-vs-demand and conductance plots to `<dir>/plots/`, and save the
 #' underlying long-format flux data and per-sample conductance table to
-#' `<dir>/results/` -- mirrors the plots/ + results/ convention
+#' `<dir>/results/`
 #' process_file.R uses for the baseline-subtraction pipeline.
-#'
-#' @param dir directory of raw "*.ANALYZED.csv" titration files (default:
-#'   data/titrations under the project root).
+#' @param dir directory of raw "*.ANALYZED.csv" titration files 
 #' @param title plot title / substrate label for the JO2-vs-demand plot.
 #' @param tail_seconds steady-state window length (seconds) before each
-#'   PCr addition -- see extract_titration_flux().
 #' @return invisibly, a list with the long flux data and conductance table.
 run_titration_analysis <- function(dir = here::here("data", "titrations"),
                                     title = "Pyruvate/Malate",
